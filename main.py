@@ -1,9 +1,9 @@
-from src.api import transcribe_wav, speak_text  # Get functions from api.py
+from src.api import transcribe_wav, speak_text  
 import subprocess
 import json
 
 # Select the desired file    
-audio_file = "./recordings/time.wav"  # Path to the audio file
+audio_file = "./recordings/time.wav"
 
 # Main function with a tentative workflow
 def main():
