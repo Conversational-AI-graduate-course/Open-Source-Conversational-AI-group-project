@@ -1,135 +1,79 @@
-import silero_vad
+import struct
 import pyaudio
-import io
-import numpy as np
-import torch
-torch.set_num_threads(1)
-import torchaudio
-import matplotlib
-import matplotlib.pylab as plt
-import pyaudio
+#pip3 install pvporcupinedemo
+#import pvporcupine
+import wave
+import os
+import time
 
-model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
-                              model='silero_vad',
-                              force_reload=True)
-(get_speech_timestamps,
- save_audio,
- read_audio,
- VADIterator,
- collect_chunks) = utils
+#Porcupine requires a valid Picovoice AccessKey at initialization. 
+#AccessKey acts as your credentials when using Porcupine SDKs. 
+#You can get your AccessKey for free. Make sure to keep your AccessKey secret.
+#Signup or Login to Picovoice Console to get your AccessKey OR Just go to github and follow the process
 
-model = load_silero_vad()
-wav = read_audio('path_to_audio_file')
-speech_timestamps = get_speech_timestamps(
-  wav,
-  model,
-  return_seconds=True,  # Return speech timestamps in seconds (default is samples)
-)
+# Set the device index and sample rate based on the previous output
+device_index = 9  # You selected this device
+sample_rate = 48000  # The sample rate that worked
 
-# Taken from utils_vad.py
-def validate(model,
-             inputs: torch.Tensor):
-    with torch.no_grad():
-        outs = model(inputs)
-    return outs
+# Folder to save the WAV files
+folder_name = "recordings"
 
-# Provided by Alexander Veysov
-def int2float(sound):
-    abs_max = np.abs(sound).max()
-    sound = sound.astype('float32')
-    if abs_max > 0:
-        sound *= 1/32768
-    sound = sound.squeeze()  # depends on the use case
-    return sound
+# Create the folder if it doesn't exist
+if not os.path.exists(folder_name):
+    os.makedirs(folder_name)
 
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-SAMPLE_RATE = 16000
-CHUNK = int(SAMPLE_RATE / 10)
+# Generate a unique file name with a timestamp
+timestamp = time.strftime("%Y%m%d-%H%M%S")  # Format: YYYYMMDD-HHMMSS
+filename = os.path.join(folder_name, f"output_{timestamp}.wav")
 
+# Initialize PyAudio
 audio = pyaudio.PyAudio()
 
-num_samples = 512
-stream = audio.open(format=FORMAT,
-                    channels=CHANNELS,
-                    rate=SAMPLE_RATE,
+porcupine = None
+
+# Open the audio stream
+stream = audio.open(format=pyaudio.paInt16,
+                    channels=2,  # Stereo input (2 channels)
+                    rate=sample_rate,
                     input=True,
-                    frames_per_buffer=CHUNK)
-data = []
-voiced_confidences = []
+                    input_device_index=device_index,
+                    frames_per_buffer=1024)
 
-frames_to_record = 50
+# Record audio for 10 seconds
+print("Recording...")
+frames = []
 
-print("Started Recording")
-for i in range(0, frames_to_record):
+for i in range(0, int(sample_rate / 1024 * 10)):  # 10 seconds of audio
+    data = stream.read(1024)
+    frames.append(data)
     
-    audio_chunk = stream.read(num_samples)
-    
-    # in case you want to save the audio later
-    data.append(audio_chunk)
-    
-    audio_int16 = np.frombuffer(audio_chunk, np.int16);
+# Debug: Print length of data captured
+print(f"Captured {len(data)} bytes")
 
-    audio_float32 = int2float(audio_int16)
-    
-    # get the confidences and add them to the list to plot them later
-    new_confidence = model(torch.from_numpy(audio_float32), 16000).item()
-    voiced_confidences.append(new_confidence)
-    
-print("Stopped the recording")
+# Stop and close the stream
+stream.stop_stream()
+stream.close()
+audio.terminate()
 
-# plot the confidences for the speech
-plt.figure(figsize=(20,6))
-plt.plot(voiced_confidences)
-plt.show()
+# Save the recorded audio as a WAV file
+with wave.open(filename, 'wb') as wf:
+    wf.setnchannels(2)  # Stereo
+    wf.setsampwidth(2)  # Explicitly set to 2 bytes (16-bit depth)
+    wf.setframerate(sample_rate)
+    wf.writeframes(b''.join(frames))
 
-#!pip install jupyterplot==0.0.3
-from jupyterplot import ProgressPlot
-import threading
-
-continue_recording = True
-
-def stop():
-    input("Press Enter to stop the recording:")
-    global continue_recording
-    continue_recording = False
-
-def start_recording():
-    
-    stream = audio.open(format=FORMAT,
-                    channels=CHANNELS,
-                    rate=SAMPLE_RATE,
-                    input=True,
-                    frames_per_buffer=CHUNK)
-
-    data = []
-    voiced_confidences = []
-    
-    global continue_recording
-    continue_recording = True
-    
-    pp = ProgressPlot(plot_names=["Silero VAD"],line_names=["speech probabilities"], x_label="audio chunks")
-    
-    stop_listener = threading.Thread(target=stop)
-    stop_listener.start()
-
-    while continue_recording:
-    
-        audio_chunk = stream.read(num_samples)
-    
-        # in case you want to save the audio later
-        data.append(audio_chunk)
-    
-        audio_int16 = np.frombuffer(audio_chunk, np.int16);
-
-        audio_float32 = int2float(audio_int16)
-    
-        # get the confidences and add them to the list to plot them later
-        new_confidence = model(torch.from_numpy(audio_float32), 16000).item()
-        voiced_confidences.append(new_confidence)
-    
-        pp.update(new_confidence)
+print(f"Audio saved as {filename}")
 
 
-    pp.finalize()
-start_recording()
+
+# porcupine = pvporcupine.create(keywords=["Sedric", "Computer"])
+
+# while True:
+# pcm = stream.read(porcupine.frame_length)
+# pcm = struct.unpack_from("h" * porcupine.frame_length, pcm)
+
+# keyword_index = porcupine.process(pcm)
+
+# if keyword_index >= 0:
+#     print("Hotword Detected")
+#     speak("Computer online")
