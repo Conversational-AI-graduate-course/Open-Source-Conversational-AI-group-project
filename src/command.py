@@ -4,6 +4,7 @@ import json
 import random
 import datetime
 import requests
+import os
 
 def speech(text):
     global o
@@ -34,13 +35,18 @@ o = json.loads(sys.stdin.read())
 
 intent = o["intent"]["name"]
 
+# Get the current script directory for dynamic paths
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
 if intent == "GetTime":
     now = datetime.datetime.now()
     speech("It's %s:%02d:%02d." % (now.strftime("%H"), now.minute, now.second))
 
 elif intent == "CreateFile":
     try:
-        with open('/home/rieke/Rhasspy-HelloWorld.txt', 'w') as fp:
+        # Dynamic path for creating the file in the same directory as the script
+        file_path = os.path.join(current_dir, "Rhasspy-HelloWorld.txt")
+        with open(file_path, 'w') as fp:
             fp.write(json.dumps(o))
         speech("File has been created.")
     except Exception as e:
