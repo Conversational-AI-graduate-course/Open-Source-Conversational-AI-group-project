@@ -1,5 +1,8 @@
-numpy>=1.24.0
-torch>=1.12.0
-torchaudio>=0.12.0
-pyaudio
-openwakeword
+numpy==1.24.0
+torch==1.12.0
+torchaudio==0.12.0
+pyaudio==0.2.14
+openwakeword==0.6.0
+tflite-runtime==2.14.0
+gradio==5.7.1
+notebook==7.3.1
