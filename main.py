@@ -3,7 +3,7 @@ import subprocess
 import json
 
 # Select the desired file    
-audio_file = "./recordings/time.wav"
+audio_file = "./recordings/weather.wav"
 
 # Main function with a tentative workflow
 def main():
