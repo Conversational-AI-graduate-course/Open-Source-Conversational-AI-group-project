@@ -3,7 +3,7 @@ import subprocess
 import json
 
 # Select the desired file    
-audio_file = "./recordings/weather.wav"
+audio_file = "./recordings/time.wav" # time.wav, weather.wav, or lamp.wav
 
 # Main function with a tentative workflow
 def main():
@@ -12,7 +12,7 @@ def main():
     transcription = transcribe_wav(audio_file)  # Transcribe the audio
     print("Step 1: The transcription is:", transcription)  # Show the transcription
     
-    # Step 2: Match the transcription to an intent
+    # Step 2: Match the transcription to an intent (To be defined with the complete ini.file)
     intents_map = {
         "create file": "CreateFile",
         "what time is it": "GetTime",
