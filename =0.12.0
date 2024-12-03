@@ -1,4 +1,28 @@
+Defaulting to user installation because normal site-packages is not writeable
 Collecting torchaudio
   Downloading torchaudio-2.5.1-cp310-cp310-manylinux1_x86_64.whl (3.4 MB)
-[?25l     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m0.0/3.4 MB[0m [31m?[0m eta [36m-:--:--[0m[2K     [91m━━[0m[90m╺[0m[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m0.2/3.4 MB[0m [31m5.2 MB/s[0m eta [36m0:00:01[0m[2K     [91m━━━━━━━━━[0m[91m╸[0m[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m0.8/3.4 MB[0m [31m11.7 MB/s[0m eta [36m0:00:01[0m[2K     [91m━━━━━━━━━━━━━━━━[0m[91m╸[0m[90m━━━━━━━━━━━━━━━━━━━━━━━[0m [32m1.4/3.4 MB[0m [31m13.6 MB/s[0m eta [36m0:00:01[0m[2K     [91m━━━━━━━━━━━━━━━━━━━━━━━━[0m[90m╺[0m[90m━━━━━━━━━━━━━━━[0m [32m2.0/3.4 MB[0m [31m14.7 MB/s[0m eta [36m0:00:01[0m[2K     [91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m[90m╺[0m[90m━━━━━━━━━[0m [32m2.6/3.4 MB[0m [31m14.9 MB/s[0m eta [36m0:00:01[0m[2K     [91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m[90m╺[0m[90m━[0m [32m3.2/3.4 MB[0m [31m15.9 MB/s[0m eta [36m0:00:01[0m[2K     [91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m[91m╸[0m [32m3.4/3.4 MB[0m [31m15.6 MB/s[0m eta [36m0:00:01[0m[2K     [91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m[91m╸[0m [32m3.4/3.4 MB[0m [31m15.6 MB/s[0m eta [36m0:00:01[0m[2K     [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m3.4/3.4 MB[0m [31m11.1 MB/s[0m eta [36m0:00:00[0m
-[?25hCollecting torch==2.5.1
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.4/3.4 MB 9.4 MB/s eta 0:00:00
+Requirement already satisfied: torch==2.5.1 in /home/nrogalla/.local/lib/python3.10/site-packages (from torchaudio) (2.5.1)
+Requirement already satisfied: networkx in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (3.4.2)
+Requirement already satisfied: fsspec in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (2024.10.0)
+Requirement already satisfied: nvidia-nvtx-cu12==12.4.127 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (12.4.127)
+Requirement already satisfied: nvidia-cufft-cu12==11.2.1.3 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (11.2.1.3)
+Requirement already satisfied: nvidia-cuda-nvrtc-cu12==12.4.127 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (12.4.127)
+Requirement already satisfied: nvidia-nccl-cu12==2.21.5 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (2.21.5)
+Requirement already satisfied: typing-extensions>=4.8.0 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (4.12.2)
+Requirement already satisfied: nvidia-cusolver-cu12==11.6.1.9 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (11.6.1.9)
+Requirement already satisfied: triton==3.1.0 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (3.1.0)
+Requirement already satisfied: nvidia-cublas-cu12==12.4.5.8 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (12.4.5.8)
+Requirement already satisfied: jinja2 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (3.1.4)
+Requirement already satisfied: filelock in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (3.16.1)
+Requirement already satisfied: nvidia-cuda-cupti-cu12==12.4.127 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (12.4.127)
+Requirement already satisfied: nvidia-cusparse-cu12==12.3.1.170 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (12.3.1.170)
+Requirement already satisfied: sympy==1.13.1 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (1.13.1)
+Requirement already satisfied: nvidia-cuda-runtime-cu12==12.4.127 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (12.4.127)
+Requirement already satisfied: nvidia-cudnn-cu12==9.1.0.70 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (9.1.0.70)
+Requirement already satisfied: nvidia-curand-cu12==10.3.5.147 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (10.3.5.147)
+Requirement already satisfied: nvidia-nvjitlink-cu12==12.4.127 in /home/nrogalla/.local/lib/python3.10/site-packages (from torch==2.5.1->torchaudio) (12.4.127)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in /home/nrogalla/.local/lib/python3.10/site-packages (from sympy==1.13.1->torch==2.5.1->torchaudio) (1.3.0)
+Requirement already satisfied: MarkupSafe>=2.0 in /home/nrogalla/.local/lib/python3.10/site-packages (from jinja2->torch==2.5.1->torchaudio) (3.0.2)
+Installing collected packages: torchaudio
+Successfully installed torchaudio-2.5.1
