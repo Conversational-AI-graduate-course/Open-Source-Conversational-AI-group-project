@@ -1,6 +1,7 @@
-from src.api import transcribe_wav, speak_text  
+from src.api import transcribe_wav, speak_text, text_intent  
 import subprocess
 import json
+import configparser
 
 # Select the desired file    
 audio_file = "./recordings/time.wav"
@@ -13,14 +14,7 @@ def main():
     print("Step 1: The transcription is:", transcription)  # Show the transcription
     
     # Step 2: Match the transcription to an intent
-    intents_map = {
-        "create file": "CreateFile",
-        "what time is it": "GetTime",
-        "tell me the time": "GetTime",
-    }
-
-    # Find the intent for the transcription
-    intent = intents_map.get(transcription.lower(), "UnknownIntent")
+    intent = text_intent(transcription.lower())
     print("Step 2: The intent is:", intent)
 
     if intent == "UnknownIntent": 
