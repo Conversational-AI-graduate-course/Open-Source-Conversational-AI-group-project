@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
+import readline
 import sys
 import json
 import random
 import datetime
 import requests
 import os
+import pandas as pd
 
 def speech(text):
     global o
     o["speech"] = {"text": text}
 
-def get_lat_lon():
+def get_lat_lon_general():  
     try:
         response = requests.get("https://ipinfo.io/json")
         response.raise_for_status()
@@ -27,8 +29,32 @@ def get_lat_lon():
     except requests.RequestException as e:
         print(f"Error fetching geolocation: {e}")
         return None
+    
+def get_lat_lon_city(city):
+    # Read the CSV file into a DataFrame
+    df = pd.read_csv('nl.csv')
+    # Define the search city (value in the first column)
+    search_city = city
+    # Search for the city in the first column
+    found_city = df[df.iloc[:, 0] == search_city]
 
-latitude, longitude = get_lat_lon()
+    # Get values from the second and third columns
+    if not found_city.empty:
+        latitude = found_city.iloc[0, 1]  # Value from the second column
+        longitude = found_city.iloc[0, 2]
+        return latitude, longitude
+
+cities_set = {}
+
+with open('config/cities', 'r') as file:
+    for line in file:
+        cities_set.add(line.lower())
+
+for word in text:
+    if word in cities_set:
+        latitude, longitude = get_lat_lon_city(word)
+    else:
+        latitude, longitude = get_lat_lon_general()
 
 # Get JSON from stdin and load into Python dict
 o = json.loads(sys.stdin.read())
@@ -38,6 +64,7 @@ intent = o["intent"]["name"]
 # Get the current script directory for dynamic paths
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
+# match intent with action
 if intent == "GetTime":
     now = datetime.datetime.now()
     speech("It's %s:%02d:%02d." % (now.strftime("%H"), now.minute, now.second))
