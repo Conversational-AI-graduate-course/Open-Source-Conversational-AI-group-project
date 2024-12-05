@@ -11,7 +11,7 @@ def main():
 
     # Step 1: Get the transcription of the audio file
     transcription = transcribe_wav(audio_file)  # Transcribe the audio
-    print("Step 1: The transcription is:", transcription)  # Show the transcription
+    print("Step 1: Your transcription is:", transcription)  # Show the transcription
     
     # Step 2: Match the transcription to an intent
     intent = text_intent(transcription.lower())
