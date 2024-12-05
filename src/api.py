@@ -46,3 +46,25 @@ def speak_text(text: str) -> None:
 
     if response.status_code != 200:
         raise ConnectionError(f"Error: {response.status_code}")
+    
+def text_intent(text: str) -> None:
+    """
+    Defines the Intent based on the provided text using th Rhasspy API
+
+    Args:
+        text (str):  Text to create intent from
+    """
+
+    api_endpoint = 'http://localhost:12101/api/text-to-intent'
+
+    response = requests.post(api_endpoint, data=text)
+
+    if response.status_code != 200:
+        raise  ConnectionError(f"Error: {response.status_code}")
+    
+    if len(response.json().get("intent")['name']) > 1:
+        return response.json().get("intent")['name']
+    else:
+        return "UnknownIntent"
+    
+
