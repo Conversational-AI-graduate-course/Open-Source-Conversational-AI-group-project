@@ -8,7 +8,6 @@ import torch
 torch.set_num_threads(1)
 import pyaudio
 import time
-import os
 import wave
 import openwakeword
 
@@ -56,27 +55,15 @@ else:
 
 n_models = len(owwModel.models.keys())
 
-
-
+# VAD and silence parameters
 SILENCE_THRESHOLD = 0.5 
 SILENCE_DURATION = 2.0  #s
 
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-SAMPLE_RATE = 16000
-
 NUM_SAMPLES = 512
+
 
 continue_recording = True
 silence_detected = False  
-
-folder_name = "recordings"
-if not os.path.exists(folder_name):
-    os.makedirs(folder_name)
-
-# Generate a unique file name with a timestamp
-timestamp = time.strftime("%Y%m%d-%H%M%S")  # Format: YYYYMMDD-HHMMSS
-filename = os.path.join(folder_name, f"output_{timestamp}.wav")
 
 
 model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
@@ -87,7 +74,6 @@ model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
  read_audio,
  VADIterator,
  collect_chunks) = utils
-continue_recording = True
 
 # Provided by Alexander Veysov
 def int2float(sound):
@@ -100,7 +86,6 @@ def int2float(sound):
 
 
 def stop():
-    
     global continue_recording
     global silence_detected
     while continue_recording and not silence_detected:
@@ -108,6 +93,8 @@ def stop():
     continue_recording = False  
     
 def start_listening():
+    global continue_recording
+    global silence_detected
 
     # Generate output string header
     print("\n\n")
@@ -118,7 +105,7 @@ def start_listening():
 
     # WAKEWORD DETECTION
     wakeword_detected = False
-    while wakeword_detected==False:
+    while not wakeword_detected:
         
         audio_chunk = mic_stream.read(CHUNK)
         
@@ -144,8 +131,7 @@ def start_listening():
     frames = []
     buffer = np.array([], dtype=np.int16)
 
-    global continue_recording
-    global silence_detected
+    
     continue_recording = True
     silence_detected = False
 
@@ -168,7 +154,7 @@ def start_listening():
         audio_float32 = int2float(audio_int16)
               
         # Get the confidences and add them to the list to plot them later
-        new_confidence = model(torch.from_numpy(audio_float32), SAMPLE_RATE).item()
+        new_confidence = model(torch.from_numpy(audio_float32), RATE).item()
         voiced_confidences.append(new_confidence)
 
         # Check for silence
@@ -189,15 +175,13 @@ def start_listening():
         else:
             silence_start = None  # Reset silence timer if voice activity is detected
 
-
-# Run capture loop continuosly, checking for wakewords
-if __name__ == "__main__":
-    frames = start_listening()
+def save_frames_to_wav(frames, filename):
+    
     # Save the recorded audio as a WAV file
     with wave.open(filename, 'wb') as wf:
         wf.setnchannels(CHANNELS)  # Stereo
         wf.setsampwidth(2)  # Explicitly set to 2 bytes (16-bit depth)
-        wf.setframerate(SAMPLE_RATE)
+        wf.setframerate(RATE)
         wf.writeframesraw(b''.join(frames))
 
     print(f"Audio saved as {filename}")
