@@ -15,7 +15,7 @@ def main():
     
     # Step 2: Match the transcription to an intent
     intent = text_intent(transcription.lower())
-    print("Step 2: The intent is:", intent)
+    print("Step 2: Your intent is:", intent)
 
     if intent == "UnknownIntent": 
         print("Sorry, I didn't understand that.") 
