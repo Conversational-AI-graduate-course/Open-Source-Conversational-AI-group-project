@@ -30,4 +30,4 @@ def LLM(mystring):
     return line
 
 
-print(LLM("Hey, please switch on the lamp in the corner of the room."))
+# print(LLM("Hey, please switch on the lamp in the corner of the room."))
