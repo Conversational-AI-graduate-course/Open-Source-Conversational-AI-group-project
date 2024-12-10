@@ -1,10 +1,10 @@
 from src.api import transcribe_wav, speak_text, text_intent  
 import subprocess
 import json
-
 import os
 import time
 import src.wakeword as wakeword
+import configparser
 
 
 
@@ -25,6 +25,7 @@ def main():
 
     # Step 1: Get the transcription of the audio file
     transcription = transcribe_wav(os.path.join(folder_name, filename))  # Transcribe the audio
+
     print("Step 1: Your transcription is:", transcription)  # Show the transcription
     
     # Step 2: Match the transcription to an intent
