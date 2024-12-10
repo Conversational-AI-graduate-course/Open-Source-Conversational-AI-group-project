@@ -9,31 +9,16 @@ torch.set_num_threads(1)
 import pyaudio
 import time
 import wave
-import openwakeword
-
-openwakeword.utils.download_models()
+import os 
 
 # Parse input arguments
 parser=argparse.ArgumentParser()
+
 parser.add_argument(
-    "--chunk_size",
-    help="How much audio (in number of samples) to predict on at once",
-    type=int,
-    default=800,
-    required=False
-)
-parser.add_argument(
-    "--model_path",
+    "--wake_word",
     help="The path of a specific model to load",
     type=str,
-    default="",
-    required=False
-)
-parser.add_argument(
-    "--inference_framework",
-    help="The inference framework to use (either 'onnx' or 'tflite'",
-    type=str,
-    default='tflite',
+    default="Yoh Dewd",
     required=False
 )
 
@@ -43,24 +28,23 @@ args=parser.parse_args()
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
-CHUNK = args.chunk_size
+CHUNK = 800
 audio = pyaudio.PyAudio()
 mic_stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
 
-# Load pre-trained openwakeword models
-if args.model_path != "":
-    owwModel = Model(wakeword_models=[args.model_path], inference_framework=args.inference_framework)
-else:
-    owwModel = Model(inference_framework=args.inference_framework)
+# Wakeword model
+model_path = f"wakeword_model/{args.wake_word.replace(' ', '_')}.tflite"
+if not os.path.exists(model_path):
+    raise FileNotFoundError(f"The specified model path does not exist: {model_path}")
+inference_framework = "tflite"
 
-n_models = len(owwModel.models.keys())
+owwModel = Model(wakeword_models=[model_path], inference_framework=inference_framework)
 
 # VAD and silence parameters
 SILENCE_THRESHOLD = 0.5 
 SILENCE_DURATION = 2.0  #s
 
 NUM_SAMPLES = 512
-
 
 continue_recording = True
 silence_detected = False  
@@ -84,7 +68,7 @@ def int2float(sound):
     sound = sound.squeeze()  # depends on the use case
     return sound
 
-
+# stop if silence detected
 def stop():
     global continue_recording
     global silence_detected
@@ -101,7 +85,7 @@ def start_listening():
     print("#"*100)
     print("Listening for wakewords...")
     print("#"*100)
-    print("\n"*(n_models*3))
+    print("\n"*(3))
 
     # WAKEWORD DETECTION
     wakeword_detected = False

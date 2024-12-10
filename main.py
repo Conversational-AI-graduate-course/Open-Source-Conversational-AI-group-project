@@ -1,6 +1,6 @@
 import os
 import time
-import wakeword
+import src.wakeword as wakeword
 
 
 folder_name = "recordings"
