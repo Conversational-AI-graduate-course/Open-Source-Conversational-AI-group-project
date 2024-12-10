@@ -11,6 +11,10 @@ import time
 import wave
 import os 
 
+import openwakeword
+
+openwakeword.utils.download_models()
+
 # Parse input arguments
 parser=argparse.ArgumentParser()
 
