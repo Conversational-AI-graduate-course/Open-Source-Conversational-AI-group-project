@@ -18,10 +18,7 @@ def main():
     timestamp = time.strftime("%Y%m%d-%H%M%S")  # Format: YYYYMMDD-HHMMSS
     filename = os.path.join(folder_name, f"output_{timestamp}.wav")
 
-    frames = wakeword.start_listening()
-
-    wakeword.save_frames_to_wav(frames, filename)
-
+    wakeword.listen_for_command(filename)
 
     # Step 1: Get the transcription of the audio file
     transcription = transcribe_wav(os.path.join(folder_name, filename))  # Transcribe the audio

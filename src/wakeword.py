@@ -1,171 +1,225 @@
-import pyaudio
-import numpy as np
-from openwakeword.model import Model
-import argparse
-import threading
-import numpy as np
-import torch
-torch.set_num_threads(1)
-import pyaudio
+import os
 import time
 import wave
-import os 
+import threading
+import argparse
+import numpy as np
+import pyaudio
+import torch
+from openwakeword.model import Model
+import openwakeword.utils
 
-# Parse input arguments
-parser=argparse.ArgumentParser()
+class WakeWordListener:
+    """
+    Class for detecting a wake word using a pre-trained model, recording audio upon detection,
+    and saving the audio to a file. 
 
-parser.add_argument(
-    "--wake_word",
-    help="The path of a specific model to load",
-    type=str,
-    default="Yoh Dewd",
-    required=False
-)
+    Attributes:
+        model_path (str): Path to the wake word detection model.
+        silence_threshold (float): Confidence threshold below which audio is considered silence. Default is 0.5.
+        silence_duration (float): Duration in seconds of continuous silence required to stop recording. Default is 2.0.
+        rate (int): Sampling rate for the audio stream. Default is 16000.
+        chunk_size (int): Size of audio chunks to read from the stream. Default is 800.
+        num_samples (int): Number of samples for buffering audio chunks. Default is 512.
+    """
+    def __init__(self, model_path, silence_threshold=0.5, silence_duration=2.0, rate=16000, chunk_size=800, num_samples = 512):
+        self.model_path = model_path
+        self.silence_threshold = silence_threshold
+        self.silence_duration = silence_duration
+        self.rate = rate
+        self.chunk_size = chunk_size
+        self.num_samples = num_samples
 
-args=parser.parse_args()
+        self.audio = pyaudio.PyAudio()
+        self.model = self.load_wakeword_model(model_path)
+        self.continue_recording = True
+        self.silence_detected = False
+        self.frames = []
+        self.buffer = np.array([], dtype=np.int16)
 
-# Get microphone stream
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 16000
-CHUNK = 800
-audio = pyaudio.PyAudio()
-mic_stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+        self.vad_model, self.utils = torch.hub.load(
+            repo_or_dir='snakers4/silero-vad',
+            model='silero_vad',
+            force_reload=True
+        )
+        self.get_speech_timestamps = self.utils[0]
+        self.stream = None
+        
 
-# Wakeword model
-model_path = f"wakeword_model/{args.wake_word.replace(' ', '_')}.tflite"
-if not os.path.exists(model_path):
-    raise FileNotFoundError(f"The specified model path does not exist: {model_path}")
-inference_framework = "tflite"
+    def load_wakeword_model(self, model_path):
+        """
+        Loads the wake word detection model.
 
-owwModel = Model(wakeword_models=[model_path], inference_framework=inference_framework)
+        Args:
+            model_path (str): Path to the wake word detection model.
 
-# VAD and silence parameters
-SILENCE_THRESHOLD = 0.5 
-SILENCE_DURATION = 2.0  #s
+        Returns:
+            Model: The loaded wake word detection model.
 
-NUM_SAMPLES = 512
+        Raises:
+            FileNotFoundError: If the specified model path does not exist.
+        """
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model path does not exist: {model_path}")
+        return Model(wakeword_models=[model_path], inference_framework="tflite")
 
-continue_recording = True
-silence_detected = False  
+    def listen_for_wakeword(self):
+        """
+        Listen for the wake word
 
+        Returns:
+            None
+        """
+        self.stream = self.audio.open(format=pyaudio.paInt16, channels=1, rate=self.rate, input=True, frames_per_buffer=self.chunk_size)
+        print("\n\n")
+        print("#"*100)
+        print("Listening for wakewords...")
+        print("#"*100)
+        print("\n"*(3))
+        wakeword_detected = False
+        while not wakeword_detected:
+            audio_chunk = self.stream.read(self.chunk_size)
+        
+            audio_sign = np.frombuffer(audio_chunk, dtype=np.int16)
 
-model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
-                              model='silero_vad',
-                              force_reload=True)
-(get_speech_timestamps,
- save_audio,
- read_audio,
- VADIterator,
- collect_chunks) = utils
+            self.model.predict(audio_sign)
 
-# Provided by Alexander Veysov
-def int2float(sound):
-    abs_max = np.abs(sound).max()
-    sound = sound.astype('float32')
-    if abs_max > 0:
-        sound *= 1/32768
-    sound = sound.squeeze()  # depends on the use case
-    return sound
-
-# stop if silence detected
-def stop():
-    global continue_recording
-    global silence_detected
-    while continue_recording and not silence_detected:
-        time.sleep(0.1)  # avoid busy waiting
-    continue_recording = False  
+            for mdl in self.model.prediction_buffer.keys():
+                
+                scores = list(self.model.prediction_buffer[mdl])
+                curr_score = format(scores[-1], '.20f').replace("-", "")
+                if float(curr_score) >= 0.5: 
+                    wakeword_detected = True
+                    print("Wakeword detected")
     
-def start_listening():
-    global continue_recording
-    global silence_detected
+    def stop_recording(self):
+        """
+        Stops the recording process when silence condition is met.
 
-    # Generate output string header
-    print("\n\n")
-    print("#"*100)
-    print("Listening for wakewords...")
-    print("#"*100)
-    print("\n"*(3))
+        Returns: 
+            None
+        """
+       
+        while self.continue_recording and not self.silence_detected:
+            time.sleep(0.1)  # avoid busy waiting
 
-    # WAKEWORD DETECTION
-    wakeword_detected = False
-    while not wakeword_detected:
+    # Provided by Alexander Veysov
+    def int2float(self, sound):
+        """
+        Converts an integer audio signal to a floating-point representation.
+
+        Args:
+            sound (np.ndarray): The input audio signal as a NumPy array of integer values.
+
+        Returns:
+            np.ndarray: A normalized floating-point representation of the audio signal, with dtype `float32`.
+        """
+        abs_max = np.abs(sound).max()
+        sound = sound.astype('float32')
+        if abs_max > 0:
+            sound *= 1/32768
+        sound = sound.squeeze()  # depends on the use case
+        return sound
+
+    def record_audio(self):
+        """
+        Records audio until the specified duration of silence is detected
+
+        Returns:
+            list: A list of recorded audio frames.
+        """
         
-        audio_chunk = mic_stream.read(CHUNK)
-        
-        audio_sign = np.frombuffer(audio_chunk, dtype=np.int16)
+        print("\n\n")
+        print("#"*100)
+        print("Recording...")
+        print("#"*100)
+   
+        silence_start = None
+        self.frames = []
+        self.continue_recording = True
+        stop_listener = threading.Thread(target=self.stop_recording)
+        stop_listener.start()
 
-        prediction = owwModel.predict(audio_sign)
-
-        for mdl in owwModel.prediction_buffer.keys():
+        while self.continue_recording:
+            audio_chunk = self.stream.read(self.chunk_size)
             
-            scores = list(owwModel.prediction_buffer[mdl])
-            curr_score = format(scores[-1], '.20f').replace("-", "")
-            if float(curr_score) >= 0.5: 
-                wakeword_detected = True
-                print("Wakeword detected")
+            # In case you want to save the audio later
+            self.frames.append(audio_chunk)
+
+            # Buffering required to fix numsample and chunk mismatch of different models
+            audio_int16 = np.frombuffer(audio_chunk, np.int16)
+            self.buffer = np.concatenate((self.buffer, audio_int16))
+            audio_int16 = self.buffer[:self.num_samples]
+            self.buffer = self.buffer[self.num_samples:]
+
+            audio_float32 = self.int2float(audio_int16)
                 
+            new_confidence = self.vad_model(torch.from_numpy(audio_float32), self.rate).item()
+
+            # Check for silence
+            if new_confidence < self.silence_threshold:
+                if silence_start is None:
+                    silence_start = time.time()  # Silence start
+                elif time.time() - silence_start >= self.silence_duration:
+                    print("Detected 2 seconds of silence. Stopping recording.")
+                    self.silence_detected = True  
+                    stop_listener.join()
+
+                    # Stop and close the stream
+                    self.stream.stop_stream()
+                    self.stream.close()
+                    self.audio.terminate()
+                    return self.frames
                     
-    print("\n\n")
-    print("#"*100)
-    print("Recording...")
-    print("#"*100)
-    voiced_confidences = []
-    silence_start = None  # Track when silence starts
-    frames = []
-    buffer = np.array([], dtype=np.int16)
+            else:
+                silence_start = None  # Reset silence timer if voice activity is detected
 
     
-    continue_recording = True
-    silence_detected = False
+    continue_recording = False 
+    
+    def save_to_wav(self, filename):
+        """
+        Saves recorded audio frames to a WAV file.
 
-    stop_listener = threading.Thread(target=stop)
-    stop_listener.start()
+        Args:
+            filename (str): The name of the output WAV file.
 
-    while continue_recording:
-        audio_chunk = mic_stream.read(CHUNK)
-        audio_sign = np.frombuffer(audio_chunk, dtype=np.int16)
+        Returns:
+            None
+        """
         
-        # In case you want to save the audio later
-        frames.append(audio_chunk)
+        with wave.open(filename, 'wb') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(self.audio.get_sample_size(pyaudio.paInt16))
+            wf.setframerate(self.rate)
+            wf.writeframes(b''.join(self.frames))
+        print(f"Audio saved to {filename}")
 
-        # Buffering required to fix numsample and chunk mismatch of different models
-        audio_int16 = np.frombuffer(audio_chunk, np.int16)
-        buffer = np.concatenate((buffer, audio_int16))
-        audio_int16 = buffer[:NUM_SAMPLES]
-        buffer = buffer[NUM_SAMPLES:]
+def listen_for_command(filename):
+    """
+    Starts the wake word detection and recording process, and saves the output to a WAV file.
 
-        audio_float32 = int2float(audio_int16)
-              
-        # Get the confidences and add them to the list to plot them later
-        new_confidence = model(torch.from_numpy(audio_float32), RATE).item()
-        voiced_confidences.append(new_confidence)
+    Args:
+        filename (str): Name of the file to save the recorded audio.
 
-        # Check for silence
-        if new_confidence < SILENCE_THRESHOLD:
-            if silence_start is None:
-                silence_start = time.time()  # Silence start
-            elif time.time() - silence_start >= SILENCE_DURATION:
-                print("Detected 2 seconds of silence. Stopping recording.")
-                silence_detected = True  
-                stop_listener.join()
-                # Stop and close the stream
-                
-                mic_stream.stop_stream()
-                mic_stream.close()
-                audio.terminate()
-                return frames
-                
-        else:
-            silence_start = None  # Reset silence timer if voice activity is detected
+    Returns:
+        None
+    """
+    parser = argparse.ArgumentParser(description="Wakeword Detection and Recording")
+    parser.add_argument(
+        "--wake_word", type=str, required=False, default="Yoh Dewd",
+        help="The name of the wakeword model to load"
+    )
+    args = parser.parse_args()
 
-def save_frames_to_wav(frames, filename):
-    
-    # Save the recorded audio as a WAV file
-    with wave.open(filename, 'wb') as wf:
-        wf.setnchannels(CHANNELS)  # Stereo
-        wf.setsampwidth(2)  # Explicitly set to 2 bytes (16-bit depth)
-        wf.setframerate(RATE)
-        wf.writeframesraw(b''.join(frames))
+    model_path = f"wakeword_model/{args.wake_word.replace(' ', '_')}.tflite"
+    openwakeword.utils.download_models()
 
-    print(f"Audio saved as {filename}")
+    listener = WakeWordListener(model_path=model_path)
+    try:
+        listener.listen_for_wakeword()
+        listener.record_audio()
+        listener.save_to_wav(filename)
+    except Exception as e:
+        print(f"Error: {e}")
+
