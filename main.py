@@ -1,16 +1,31 @@
 from src.api import transcribe_wav, speak_text, text_intent  
 import subprocess
 import json
+import os
+import time
+import src.wakeword as wakeword
 import configparser
 
-# Select the desired file    
-audio_file = "./recordings/time.wav"
+
 
 # Main function with a tentative workflow
 def main():
+    folder_name = "recordings"
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+
+    # Generate a unique file name with a timestamp
+    timestamp = time.strftime("%Y%m%d-%H%M%S")  # Format: YYYYMMDD-HHMMSS
+    filename = os.path.join(folder_name, f"output_{timestamp}.wav")
+
+    frames = wakeword.start_listening()
+
+    wakeword.save_frames_to_wav(frames, filename)
+
 
     # Step 1: Get the transcription of the audio file
-    transcription = transcribe_wav(audio_file)  # Transcribe the audio
+    transcription = transcribe_wav(os.path.join(folder_name, filename))  # Transcribe the audio
+
     print("Step 1: Your transcription is:", transcription)  # Show the transcription
     
     # Step 2: Match the transcription to an intent
