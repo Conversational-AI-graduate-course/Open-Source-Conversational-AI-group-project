@@ -3,14 +3,15 @@ import numpy as np
 from openwakeword.model import Model
 import argparse
 import threading
-import numpy as np
 import torch
 torch.set_num_threads(1)
 import pyaudio
 import time
 import wave
 import os 
+import openwakeword
 
+openwakeword.utils.download_models()
 # Parse input arguments
 parser=argparse.ArgumentParser()
 
@@ -24,13 +25,11 @@ parser.add_argument(
 
 args=parser.parse_args()
 
-# Get microphone stream
+# recording parameters
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
 CHUNK = 800
-audio = pyaudio.PyAudio()
-mic_stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
 
 # Wakeword model
 model_path = f"wakeword_model/{args.wake_word.replace(' ', '_')}.tflite"
@@ -61,6 +60,15 @@ model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
 
 # Provided by Alexander Veysov
 def int2float(sound):
+    """
+    Converts an integer audio signal to a floating-point representation.
+
+    Args:
+        sound (np.ndarray): The input audio signal as a NumPy array of integer values.
+
+    Returns:
+        np.ndarray: A normalized floating-point representation of the audio signal, with dtype `float32`.
+    """
     abs_max = np.abs(sound).max()
     sound = sound.astype('float32')
     if abs_max > 0:
@@ -70,6 +78,12 @@ def int2float(sound):
 
 # stop if silence detected
 def stop():
+    """
+    Stops the recording process when silence condition is met.
+
+    Returns: 
+        None
+    """
     global continue_recording
     global silence_detected
     while continue_recording and not silence_detected:
@@ -77,6 +91,16 @@ def stop():
     continue_recording = False  
     
 def start_listening():
+    """
+    Starts listening for wakewords and records once wakeword has been detected until 2s of silence has been detected.
+    
+    Returns:
+        None
+    """
+    
+    audio = pyaudio.PyAudio()
+    mic_stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+
     global continue_recording
     global silence_detected
 
@@ -160,7 +184,16 @@ def start_listening():
             silence_start = None  # Reset silence timer if voice activity is detected
 
 def save_frames_to_wav(frames, filename):
-    
+    """ 
+    Saves audio frames to a .wav file.
+
+    Args:
+        frames (list): A list of audio frames, where each frame is represented as a byte sequence.
+        filename (str): The name of the file to save the audio as. The file will be created in .wav format.
+
+    Returns:
+        None
+    """
     # Save the recorded audio as a WAV file
     with wave.open(filename, 'wb') as wf:
         wf.setnchannels(CHANNELS)  # Stereo

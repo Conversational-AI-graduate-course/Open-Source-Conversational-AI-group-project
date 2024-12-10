@@ -7,10 +7,27 @@ import requests
 import os
 
 def speech(text):
+    """
+    Updates the global `o` dictionary with a speech text entry.
+
+    Args:
+        text (str): The text to be assigned as the speech content.
+
+    Returns:
+        None
+    """
     global o
     o["speech"] = {"text": text}
 
 def get_lat_lon():
+    """
+    Fetches the latitude and longitude of the current user based on their IP address.
+
+    Returns:
+        tuple or None: 
+            tuple containing latitude and longitude as floats (latitude, longitude) if successful, 
+            or `None` if the geolocation data is unavailable or an error occurs.
+    """
     try:
         response = requests.get("https://ipinfo.io/json")
         response.raise_for_status()

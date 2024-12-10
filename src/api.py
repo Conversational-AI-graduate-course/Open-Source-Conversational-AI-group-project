@@ -9,6 +9,11 @@ def transcribe_wav(file_path: str) -> str:
 
     Returns:
         str: Transcription result
+    
+    Raises:
+        ConnectionError: If the API call fails or the response status code is not 200.
+        FileNotFoundError: If files do not exist where specified
+
     """
 
     try:
@@ -38,6 +43,12 @@ def speak_text(text: str) -> None:
 
     Args:
         text (str): Text to speak
+    
+    Returns: 
+        None
+
+    Raises:
+        ConnectionError: If the API call fails or the response status code is not 200.
     """
 
     api_endpoint = 'http://localhost:12101/api/text-to-speech'
@@ -53,6 +64,13 @@ def text_intent(text: str) -> None:
 
     Args:
         text (str):  Text to create intent from
+    
+    Returns:
+        str: The name of the intent identified by the Rhasspy API. If no intent is identified, 
+        returns "UnknownIntent".
+
+    Raises:
+        ConnectionError: If the API call fails or the response status code is not 200.
     """
 
     api_endpoint = 'http://localhost:12101/api/text-to-intent'
@@ -67,4 +85,3 @@ def text_intent(text: str) -> None:
     else:
         return "UnknownIntent"
     
-
