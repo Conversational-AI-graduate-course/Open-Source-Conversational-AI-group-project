@@ -4,6 +4,7 @@ import json
 import os
 import time
 import src.wakeword as wakeword
+from src.llm import LLM
 
 def main():
     """
@@ -41,6 +42,7 @@ def main():
 
     # Step 4: Run command.py to handle the intent
     response = run_command(intent, transcription) 
+    response = LLM(response)
     print("Step 3: The response is:", response) 
     
     # Step 5: Speak the response using text-to-speech
