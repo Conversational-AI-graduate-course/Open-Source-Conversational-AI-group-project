@@ -21,9 +21,7 @@ def main():
     filename = os.path.join(folder_name, f"output_{timestamp}.wav")
     
     # Step 1: Listen for wakeword and record request
-    frames = wakeword.start_listening()
-
-    wakeword.save_frames_to_wav(frames, filename)
+    wakeword.listen_for_command(filename)
 
     # Step 2: Get the transcription of the audio file
     transcription = transcribe_wav(filename)  # Transcribe the audio
