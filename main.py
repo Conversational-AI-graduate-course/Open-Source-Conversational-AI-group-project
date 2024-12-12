@@ -1,10 +1,14 @@
 from src.api import transcribe_wav, speak_text, text_intent  
+import argparse
 import subprocess
 import json
+import openwakeword.utils
 import os
+import pyaudio
+import requests
 import time
-import src.wakeword as wakeword
-from src.llm import LLM
+from src.wakeword import WakeWordListener
+from src.llm import LLM_paraphrase, LLM_response
 
 def main():
     """
@@ -17,36 +21,79 @@ def main():
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
 
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
+    parser = argparse.ArgumentParser(description="Wakeword Detection and Recording")
+    parser.add_argument(
+        "--wake_word", type=str, required=False, default="Yoh Dewd",
+        help="The name of the wakeword model to load"
+    )
+    args = parser.parse_args()
+
+    model_path = f"wakeword_model/{args.wake_word.replace(' ', '_')}.tflite"
+    openwakeword.utils.download_models()
+
+    listener = WakeWordListener(model_path=model_path)
+    listener.stream = listener.audio.open(format=pyaudio.paInt16, channels=1, rate=listener.rate, input=True, frames_per_buffer=listener.chunk_size)
+
+    listener.listen_for_wakeword()
+
+    try:
+        with open('src/resources/sentences.ini', 'r') as sentences_file:
+            sentences = sentences_file.read()
+            api_endpoint_sentences = 'http://localhost:12101/api/sentences'
+            response_sentences = requests.post(api_endpoint_sentences, sentences)
+            if response_sentences.status_code != 200:
+                raise ConnectionError(f"Error: {response_sentences.status_code}")
+    except FileNotFoundError:
+        raise FileNotFoundError("Error: Could not open sentences.ini file")
+    
+    api_endpoint_train = 'http://localhost:12101/api/train'
+    response_train = requests.post(api_endpoint_train)
+    if response_train.status_code != 200:
+        raise ConnectionError(f"Error: {response_train.status_code}")
+
+    speak_text("Greetings! How can I assist you today?")
+
+    conversation_completed = False
+    while not conversation_completed:
     # Generate a unique file name with a timestamp
-    timestamp = time.strftime("%Y%m%d-%H%M%S")  # Format: YYYYMMDD-HHMMSS
-    filename = os.path.join(folder_name, f"output_{timestamp}.wav")
-    
-    # Step 1: Listen for wakeword and record request
-    wakeword.listen_for_command(filename)
+        timestamp = time.strftime("%Y%m%d-%H%M%S")  # Format: YYYYMMDD-HHMMSS
+        filename = os.path.join(folder_name, f"output_{timestamp}.wav")
+        
+        # Step 1: Record request
+        listener.record_audio()
+        listener.save_to_wav(filename)
 
-    # Step 2: Get the transcription of the audio file
-    transcription = transcribe_wav(filename)  # Transcribe the audio
+        # Step 2: Get the transcription of the audio file
+        transcription = transcribe_wav(filename)  # Transcribe the audio
 
-    print("Step 1: Your transcription is:", transcription)  # Show the transcription
+        print("Step 1: Your transcription is:", transcription)  # Show the transcription
 
-    # Remove the audio file after transcription
-    os.remove(filename)
-    
-    # Step 3: Match the transcription to an intent
-    intent = text_intent(transcription.lower())
-    print("Step 2: Your intent is:", intent)
+        # Remove the audio file after transcription
+        os.remove(filename)
+        
+        # Step 3: Match the transcription to an intent
+        intent = text_intent(transcription.lower())
+        print("Step 2: Your intent is:", intent)
 
-    if intent == "UnknownIntent": 
-        print("Sorry, I didn't understand that.") 
-        return  # Stop the program
+        if intent == "UnknownIntent":
+            speak_text("I'm sorry, I did not understand that. Could you repeat?")
+            continue
+        elif intent in ["Goodbye", "Hello", "GetTime", "GetTemperature", "CreateFile"]: 
+            # Step 4: Run command.py to handle the intent
+            response = run_command(intent, transcription) 
+            response = LLM_paraphrase(response)
+            print("Step 3: The response is:", response) 
+        else:
+            response = LLM_response(transcription)
+            print("Step 3: The response is:", response)
+        
+        # Step 5: Speak the response using text-to-speech
+        speak_text(response)  # Convert the response text to speech
 
-    # Step 4: Run command.py to handle the intent
-    response = run_command(intent, transcription) 
-    response = LLM(response)
-    print("Step 3: The response is:", response) 
-    
-    # Step 5: Speak the response using text-to-speech
-    speak_text(response)  # Convert the response text to speech
+        if intent == "Goodbye":
+            conversation_completed = True
 
 # Function to run the command.py script. we need to rebuild this function!
 def run_command(intent, transcription):

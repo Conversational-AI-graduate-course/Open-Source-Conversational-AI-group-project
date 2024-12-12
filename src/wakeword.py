@@ -2,12 +2,10 @@ import os
 import time
 import wave
 import threading
-import argparse
 import numpy as np
 import pyaudio
 import torch
 from openwakeword.model import Model
-import openwakeword.utils
 
 class WakeWordListener:
     """
@@ -70,7 +68,7 @@ class WakeWordListener:
         Returns:
             None
         """
-        self.stream = self.audio.open(format=pyaudio.paInt16, channels=1, rate=self.rate, input=True, frames_per_buffer=self.chunk_size)
+        
         print("\n\n")
         print("#"*100)
         print("Listening for wakewords...")
@@ -165,10 +163,6 @@ class WakeWordListener:
                     self.silence_detected = True  
                     stop_listener.join()
 
-                    # Stop and close the stream
-                    self.stream.stop_stream()
-                    self.stream.close()
-                    self.audio.terminate()
                     return self.frames
                     
             else:
@@ -194,31 +188,3 @@ class WakeWordListener:
             wf.setframerate(self.rate)
             wf.writeframes(b''.join(self.frames))
         print(f"Audio saved to {filename}")
-
-def listen_for_command(filename):
-    """
-    Starts the wake word detection and recording process, and saves the output to a WAV file.
-
-    Args:
-        filename (str): Name of the file to save the recorded audio.
-
-    Returns:
-        None
-    """
-    parser = argparse.ArgumentParser(description="Wakeword Detection and Recording")
-    parser.add_argument(
-        "--wake_word", type=str, required=False, default="Yoh Dewd",
-        help="The name of the wakeword model to load"
-    )
-    args = parser.parse_args()
-
-    model_path = f"wakeword_model/{args.wake_word.replace(' ', '_')}.tflite"
-    openwakeword.utils.download_models()
-
-    listener = WakeWordListener(model_path=model_path)
-    try:
-        listener.listen_for_wakeword()
-        listener.record_audio()
-        listener.save_to_wav(filename)
-    except Exception as e:
-        print(f"Error: {e}")

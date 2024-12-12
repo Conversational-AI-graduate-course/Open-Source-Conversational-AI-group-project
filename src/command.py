@@ -69,6 +69,9 @@ elif intent == "CreateFile":
     except Exception as e:
         speech(f"Failed to create file: {str(e)}")
 
+elif intent == "Goodbye":
+    speech("Goodbye!")
+
 elif intent == "GetTemperature":
     try:
         # Get weather data from Open-Meteo API
@@ -93,7 +96,7 @@ elif intent == "GetTemperature":
 
 elif intent == "Hello":
     replies = ['Hi!', 'Hello!', 'Hey there!', 'Greetings.']
-    speech(random.choice(replies))
+    speech(random.choice(replies) + " What can I help you with?")
 
 # Output the JSON response for Rhasspy
 print(json.dumps(o))

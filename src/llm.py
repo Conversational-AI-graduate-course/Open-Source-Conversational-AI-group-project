@@ -1,8 +1,8 @@
 # Function that takes a string and returns a paraphrased random choice using T5 Paws LLM
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
 
-def LLM(mystring):
+def LLM_paraphrase(mystring):
     # DEFINING THE TOKENISER AND MODEL
     tokenizer = AutoTokenizer.from_pretrained("Vamsi/T5_Paraphrase_Paws")  
     model = AutoModelForSeq2SeqLM.from_pretrained("Vamsi/T5_Paraphrase_Paws")
@@ -29,5 +29,6 @@ def LLM(mystring):
         
     return line
 
-
-# print(LLM("Hey, please switch on the lamp in the corner of the room."))
+def LLM_response(input):
+    olmo_pipe = pipeline("text-generation", model="allenai/OLMo-1B-hf")
+    return olmo_pipe("Question: " + input + " Answer: ")[0]['generated_text'].split("Answer: ")[1].split("Question")[0].strip()

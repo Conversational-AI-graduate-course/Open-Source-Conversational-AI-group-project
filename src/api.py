@@ -17,16 +17,6 @@ def transcribe_wav(file_path: str) -> str:
     """
 
     try:
-        with open('src/resources/sentences.ini', 'r') as sentences_file:
-            sentences = sentences_file.read()
-            api_endpoint_sentences = 'http://localhost:12101/api/sentences'
-            response_sentences = requests.post(api_endpoint_sentences, sentences)
-            if response_sentences.status_code != 200:
-                raise ConnectionError(f"Error: {response_sentences.status_code}")
-    except FileNotFoundError:
-        raise FileNotFoundError("Error: Could not open sentences.ini file")
-
-    try:
         with open(file_path, 'rb') as recording:
             api_endpoint = 'http://localhost:12101/api/speech-to-text'
             response = requests.post(api_endpoint, recording, headers={'Content-Type': 'audio/wav'})
