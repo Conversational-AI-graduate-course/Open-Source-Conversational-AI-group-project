@@ -7,6 +7,7 @@ import src.wakeword as wakeword
 import openwakeword
 import argparse
 import torch
+from src.llm import LLM
 
 def main(args):
     """
@@ -45,6 +46,7 @@ def main(args):
 
         # Step 4: Run command.py to handle the intent
         response = run_command(intent, transcription) 
+        response = LLM(response)
         print("Step 3: The response is:", response) 
         
         # Step 5: Speak the response using text-to-speech
