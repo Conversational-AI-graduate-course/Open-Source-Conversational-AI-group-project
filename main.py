@@ -4,49 +4,53 @@ import json
 import os
 import time
 import src.wakeword as wakeword
+import openwakeword
+import argparse
+import torch
 from src.llm import LLM
 
-def main():
+def main(args):
     """
     Main function for the workflow of a conversational voice assistant system.
 
     Returns:
         None
     """
-    folder_name = "recordings"
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
-
-    # Generate a unique file name with a timestamp
-    timestamp = time.strftime("%Y%m%d-%H%M%S")  # Format: YYYYMMDD-HHMMSS
-    filename = os.path.join(folder_name, f"output_{timestamp}.wav")
     
-    # Step 1: Listen for wakeword and record request
-    wakeword.listen_for_command(filename)
+    model_path, shutdown_model_path, vad_model, folder_name = audio_setup(args)
 
-    # Step 2: Get the transcription of the audio file
-    transcription = transcribe_wav(filename)  # Transcribe the audio
+    while True:
+        # Generate a unique file name with a timestamp
+        timestamp = time.strftime("%Y%m%d-%H%M%S")  # Format: YYYYMMDD-HHMMSS
+        filename = os.path.join(folder_name, f"output_{timestamp}.wav")
+        
+        # Step 1: Listen for wakeword and record request
+        shutdown = wakeword.listen_for_command(model_path, shutdown_model_path, vad_model, filename)
+        if shutdown:
+            break
+        # Step 2: Get the transcription of the audio file
+        transcription = transcribe_wav(filename)  # Transcribe the audio
 
-    print("Step 1: Your transcription is:", transcription)  # Show the transcription
+        print("Step 1: Your transcription is:", transcription)  # Show the transcription
 
-    # Remove the audio file after transcription
-    os.remove(filename)
-    
-    # Step 3: Match the transcription to an intent
-    intent = text_intent(transcription.lower())
-    print("Step 2: Your intent is:", intent)
+        # Remove the audio file after transcription
+        os.remove(filename)
+        
+        # Step 3: Match the transcription to an intent
+        intent = text_intent(transcription.lower())
+        print("Step 2: Your intent is:", intent)
 
-    if intent == "UnknownIntent": 
-        print("Sorry, I didn't understand that.") 
-        return  # Stop the program
+        if intent == "UnknownIntent": 
+            print("Sorry, I didn't understand that.") 
+            return  # Stop the program
 
-    # Step 4: Run command.py to handle the intent
-    response = run_command(intent, transcription) 
-    response = LLM(response)
-    print("Step 3: The response is:", response) 
-    
-    # Step 5: Speak the response using text-to-speech
-    speak_text(response)  # Convert the response text to speech
+        # Step 4: Run command.py to handle the intent
+        response = run_command(intent, transcription) 
+        response = LLM(response)
+        print("Step 3: The response is:", response) 
+        
+        # Step 5: Speak the response using text-to-speech
+        speak_text(response)  # Convert the response text to speech
 
 # Function to run the command.py script. we need to rebuild this function!
 def run_command(intent, transcription):
@@ -90,6 +94,33 @@ def run_command(intent, transcription):
     # Return the "speech" text from the response
     return output_data["speech"]["text"]
 
+
+def audio_setup(args):
+    folder_name = "recordings"
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+    model_path = f"wakeword_model/{args.wake_word.replace(' ', '_')}.tflite"
+    shutdown_model_path = f"wakeword_model/{args.shutdown_word.replace(' ', '_')}.tflite"
+    openwakeword.utils.download_models()
+
+    vad_model, _= torch.hub.load(
+            repo_or_dir='snakers4/silero-vad',
+            model='silero_vad',
+            force_reload=True
+        )
+    return model_path, shutdown_model_path, vad_model, folder_name
+
 # Run the main function when the script starts
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Wakeword Detection and Recording")
+    parser.add_argument(
+        "--wake_word", type=str, required=False, default="Yoh Dewd",
+        help="The name of the wakeword model to load"
+    )
+    parser.add_argument(
+        "--shutdown_word", type=str, required=False, default="Bye Dewd",
+        help="The name of the shutdown model to load"
+    )
+    args = parser.parse_args()
+
+    main(args)
