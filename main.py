@@ -24,9 +24,12 @@ def main():
 
 
     # Step 1: Get the transcription of the audio file
-    transcription = transcribe_wav(os.path.join(folder_name, filename))  # Transcribe the audio
+    transcription = transcribe_wav(filename)  # Transcribe the audio
 
     print("Step 1: Your transcription is:", transcription)  # Show the transcription
+
+    # Remove the audio file after transcription
+    os.remove(filename)
     
     # Step 2: Match the transcription to an intent
     intent = text_intent(transcription.lower())
@@ -57,7 +60,7 @@ def run_command(intent, transcription):
     # Call command.py and send the input
     # `stdin` is for sending input, `stdout` is for receiving output
     process = subprocess.Popen(
-        ["python", "src/command.py"],  # Run the command.py script
+        ["python3", "src/command.py"],  # Run the command.py script
         stdin=subprocess.PIPE,         # Send input through stdin
         stdout=subprocess.PIPE         # Get output from stdout
     )
@@ -68,6 +71,10 @@ def run_command(intent, transcription):
     # Convert the JSON response back into a dictionary
     output_data = json.loads(stdout)
     
+    # Check if we transcribed something, otherwise return nothing
+    if "speech" not in output_data:
+        return "I'm sorry, I did not understand that. Could you repeat?"
+
     # Return the "speech" text from the response
     return output_data["speech"]["text"]
 
