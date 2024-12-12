@@ -222,4 +222,3 @@ def listen_for_command(filename):
         listener.save_to_wav(filename)
     except Exception as e:
         print(f"Error: {e}")
-
