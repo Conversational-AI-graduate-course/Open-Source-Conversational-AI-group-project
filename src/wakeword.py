@@ -7,7 +7,7 @@ import numpy as np
 import pyaudio
 import torch
 from openwakeword.model import Model
-import openwakeword.utils
+
 
 class WakeWordListener:
     """
@@ -22,8 +22,9 @@ class WakeWordListener:
         chunk_size (int): Size of audio chunks to read from the stream. Default is 800.
         num_samples (int): Number of samples for buffering audio chunks. Default is 512.
     """
-    def __init__(self, model_path, silence_threshold=0.5, silence_duration=2.0, rate=16000, chunk_size=800, num_samples = 512):
+    def __init__(self, model_path, ss_model_path, vad_model, silence_threshold=0.5, silence_duration=2.0, rate=16000, chunk_size=800, num_samples = 512):
         self.model_path = model_path
+        self.ss_model_path = ss_model_path
         self.silence_threshold = silence_threshold
         self.silence_duration = silence_duration
         self.rate = rate
@@ -31,22 +32,18 @@ class WakeWordListener:
         self.num_samples = num_samples
 
         self.audio = pyaudio.PyAudio()
-        self.model = self.load_wakeword_model(model_path)
+        self.model = self.load_wakeword_model([model_path, ss_model_path])
         self.continue_recording = True
         self.silence_detected = False
         self.frames = []
         self.buffer = np.array([], dtype=np.int16)
 
-        self.vad_model, self.utils = torch.hub.load(
-            repo_or_dir='snakers4/silero-vad',
-            model='silero_vad',
-            force_reload=True
-        )
-        self.get_speech_timestamps = self.utils[0]
+        self.vad_model = vad_model
+        
         self.stream = None
         
 
-    def load_wakeword_model(self, model_path):
+    def load_wakeword_model(self, model_paths):
         """
         Loads the wake word detection model.
 
@@ -59,9 +56,10 @@ class WakeWordListener:
         Raises:
             FileNotFoundError: If the specified model path does not exist.
         """
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Model path does not exist: {model_path}")
-        return Model(wakeword_models=[model_path], inference_framework="tflite")
+        for model_path in model_paths:
+            if not os.path.exists(model_path):
+                raise FileNotFoundError(f"Model path does not exist: {model_path}")
+        return Model(wakeword_models=model_paths, inference_framework="tflite")
 
     def listen_for_wakeword(self):
         """
@@ -84,13 +82,19 @@ class WakeWordListener:
 
             self.model.predict(audio_sign)
 
-            for mdl in self.model.prediction_buffer.keys():
-                
+            for i in range(len(self.model.prediction_buffer.keys())):
+                mdl = list(self.model.prediction_buffer.keys())[i]
+
                 scores = list(self.model.prediction_buffer[mdl])
                 curr_score = format(scores[-1], '.20f').replace("-", "")
                 if float(curr_score) >= 0.5: 
-                    wakeword_detected = True
-                    print("Wakeword detected")
+                    if i == 0: # wakeword
+                        wakeword_detected = True
+                        print("Wakeword detected")
+                        return False
+                    elif i == 1: #shutdown word
+                        print("Shutdown detected")
+                        return True
     
     def stop_recording(self):
         """
@@ -195,7 +199,7 @@ class WakeWordListener:
             wf.writeframes(b''.join(self.frames))
         print(f"Audio saved to {filename}")
 
-def listen_for_command(filename):
+def listen_for_command(model_path, shutdown_model_path, vad_model, filename):
     """
     Starts the wake word detection and recording process, and saves the output to a WAV file.
 
@@ -205,20 +209,14 @@ def listen_for_command(filename):
     Returns:
         None
     """
-    parser = argparse.ArgumentParser(description="Wakeword Detection and Recording")
-    parser.add_argument(
-        "--wake_word", type=str, required=False, default="Yoh Dewd",
-        help="The name of the wakeword model to load"
-    )
-    args = parser.parse_args()
-
-    model_path = f"wakeword_model/{args.wake_word.replace(' ', '_')}.tflite"
-    openwakeword.utils.download_models()
-
-    listener = WakeWordListener(model_path=model_path)
+    listener = WakeWordListener(model_path=model_path, ss_model_path=shutdown_model_path, vad_model = vad_model)
     try:
-        listener.listen_for_wakeword()
+        shutdown = listener.listen_for_wakeword()
+        if shutdown == True:
+            return True
         listener.record_audio()
         listener.save_to_wav(filename)
     except Exception as e:
         print(f"Error: {e}")
+    return False
+
