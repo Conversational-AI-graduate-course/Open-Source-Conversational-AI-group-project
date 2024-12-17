@@ -7,10 +7,13 @@ import os
 import pyaudio
 import requests
 import time
-from src.wakeword import WakeWordListener
+import src.wakeword as wakeword
 from src.llm import LLM_paraphrase, LLM_response
+import openwakeword
+import argparse
+import torch
 
-def main():
+def main(args):
     """
     Main function for the workflow of a conversational voice assistant system.
 
@@ -23,20 +26,21 @@ def main():
 
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-    parser = argparse.ArgumentParser(description="Wakeword Detection and Recording")
-    parser.add_argument(
-        "--wake_word", type=str, required=False, default="Yoh Dewd",
-        help="The name of the wakeword model to load"
-    )
-    args = parser.parse_args()
-
     model_path = f"wakeword_model/{args.wake_word.replace(' ', '_')}.tflite"
+    shutdown_model_path = f"wakeword_model/{args.shutdown_word.replace(' ', '_')}.tflite"
     openwakeword.utils.download_models()
+    vad_model, _= torch.hub.load(
+            repo_or_dir='snakers4/silero-vad',
+            model='silero_vad',
+            force_reload=True
+    )
 
-    listener = WakeWordListener(model_path=model_path)
+    listener = wakeword.WakeWordListener(model_path=model_path, ss_model_path=shutdown_model_path, vad_model = vad_model)
     listener.stream = listener.audio.open(format=pyaudio.paInt16, channels=1, rate=listener.rate, input=True, frames_per_buffer=listener.chunk_size)
 
-    listener.listen_for_wakeword()
+    shutdown = listener.listen_for_wakeword()
+    if shutdown:
+        return
 
     try:
         with open('src/resources/sentences.ini', 'r') as sentences_file:
@@ -139,4 +143,15 @@ def run_command(intent, transcription):
 
 # Run the main function when the script starts
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Wakeword Detection and Recording")
+    parser.add_argument(
+        "--wake_word", type=str, required=False, default="Yoh Dewd",
+        help="The name of the wakeword model to load"
+    )
+    parser.add_argument(
+        "--shutdown_word", type=str, required=False, default="Bye Dewd",
+        help="The name of the shutdown model to load"
+    )
+    args = parser.parse_args()
+
+    main(args)
